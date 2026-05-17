@@ -9,19 +9,27 @@ export default function Home() {
   const [loading, setLoading] = useState<boolean>(true);
   const [copied, setCopied] = useState<boolean>(false);
 
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   const fetchStatus = async () => {
     try {
       const res = await fetch("/api/aws-instance");
       const data = await res.json();
       
-      if (data.status) {
+      if (data.error) {
+        setStatus("error");
+        setErrorMsg(data.error);
+      } else if (data.status) {
         setStatus(data.status);
         setIp(data.ip);
+        setErrorMsg(null);
       } else {
         setStatus("error");
+        setErrorMsg("Unknown API response.");
       }
-    } catch (err) {
+    } catch (err: any) {
       setStatus("error");
+      setErrorMsg(err.message || "Failed to connect to the server API.");
     } finally {
       setLoading(false);
     }
@@ -36,12 +44,20 @@ export default function Home() {
   const handleStart = async () => {
     setLoading(true);
     try {
-      await fetch("/api/aws-instance", { method: "POST" });
-      setStatus("pending");
-      // Poll faster while pending
-      setTimeout(fetchStatus, 3000);
-    } catch (err) {
+      const res = await fetch("/api/aws-instance", { method: "POST" });
+      const data = await res.json();
+      if (data.error) {
+        setStatus("error");
+        setErrorMsg(data.error);
+      } else {
+        setStatus("pending");
+        setErrorMsg(null);
+        setTimeout(fetchStatus, 3000);
+      }
+    } catch (err: any) {
       console.error(err);
+      setStatus("error");
+      setErrorMsg(err.message || "Failed to start the server.");
     } finally {
       setLoading(false);
     }
@@ -59,7 +75,8 @@ export default function Home() {
   const isPending = status === "pending" || status === "stopping";
 
   return (
-    <main className={`${styles.container} ${isRunning ? styles.online : ''}`}>
+    <div className={styles.page}>
+      <main className={`${styles.container} ${isRunning ? styles.online : ''}`}>
       <h1 className={styles.title}>Minecraft Fabric</h1>
       <p className={styles.subtitle}>Server Controller Panel</p>
 
@@ -77,6 +94,15 @@ export default function Home() {
         )}
       </div>
 
+      <div className={`${styles.helperText} ${status === 'error' ? styles.helperTextError : ''}`}>
+        {status === "loading..." && "Checking server status..."}
+        {status === "error" && `Error: ${errorMsg || "An unknown error occurred. Please contact the server admin."}`}
+        {status === "stopped" && "The server is currently offline to save resources. Click 'Start Server' below to boot it up!"}
+        {status === "pending" && "The AWS machine is booting up! Please wait about 1 minute..."}
+        {status === "running" && "AWS is online! Minecraft is starting. You can usually join ~2 mins after the IP appears."}
+        {status === "stopping" && "The server is shutting down. Please wait."}
+      </div>
+
       <button 
         className={styles.button}
         onClick={handleStart}
@@ -84,6 +110,43 @@ export default function Home() {
       >
         {loading ? "Please wait..." : isRunning ? "Server Online" : isPending ? "Starting up..." : "Start Server"}
       </button>
-    </main>
+      </main>
+
+      <section className={styles.featuresWrapper}>
+        <h2 className={styles.featuresTitle}>Server Features</h2>
+        <div className={styles.featuresGrid}>
+          <div className={styles.featureCard}>
+            <div className={styles.featureIcon}>🏰</div>
+            <h3>Epic Exploration</h3>
+            <p>Completely overhauled world generation with beautiful towns, custom dungeons, and biome-specific repurposed structures.</p>
+          </div>
+          <div className={styles.featureCard}>
+            <div className={styles.featureIcon}>💎</div>
+            <h3>Mining Rewarded</h3>
+            <p>Mining regular stone now has a 5% chance to drop valuable minerals like Diamonds, Emeralds, and Gold.</p>
+          </div>
+          <div className={styles.featureCard}>
+            <div className={styles.featureIcon}>🤝</div>
+            <h3>Multiplayer QoL</h3>
+            <p>Instantly chop down entire trees, feed your friends, and safely teleport with your pets without taking damage.</p>
+          </div>
+          <div className={styles.featureCard}>
+            <div className={styles.featureIcon}>🥩</div>
+            <h3>Edible Ingredients</h3>
+            <p>Eat raw ingredients in a pinch! Blaze Powder gives Strength, Sugar gives Speed, and Ghast Tears give Regen for 30s.</p>
+          </div>
+          <div className={styles.featureCard}>
+            <div className={styles.featureIcon}>⚔️</div>
+            <h3>Upgraded Combat</h3>
+            <p>Expanded enchantments, more mob variations, and massive upgrades to the Hero of the Village buffs.</p>
+          </div>
+          <div className={styles.featureCard}>
+            <div className={styles.featureIcon}>⚡</div>
+            <h3>Ultra Optimized</h3>
+            <p>Running a premium suite of optimization mods like Lithium and VMP ensuring zero block lag or rubberbanding.</p>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }

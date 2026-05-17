@@ -5,6 +5,10 @@ import { NextResponse } from "next/server";
 // AWS_SECRET_ACCESS_KEY, and AWS_REGION environment variables.
 const client = new EC2Client({
   region: process.env.AWS_REGION || "us-east-1",
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+  }
 });
 
 const INSTANCE_ID = process.env.AWS_INSTANCE_ID || "";
@@ -31,7 +35,7 @@ export async function GET() {
     });
   } catch (error: any) {
     console.error("Error describing instance:", error);
-    return NextResponse.json({ error: "Failed to fetch instance status" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to fetch instance status" }, { status: 500 });
   }
 }
 
@@ -48,6 +52,6 @@ export async function POST() {
     return NextResponse.json({ success: true, message: "Instance starting" });
   } catch (error: any) {
     console.error("Error starting instance:", error);
-    return NextResponse.json({ error: "Failed to start instance" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to start instance" }, { status: 500 });
   }
 }
