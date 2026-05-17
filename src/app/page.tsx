@@ -10,6 +10,7 @@ export default function Home() {
   const [copied, setCopied] = useState<boolean>(false);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [minecraftOnline, setMinecraftOnline] = useState<boolean>(false);
 
   const fetchStatus = async () => {
     try {
@@ -22,6 +23,7 @@ export default function Home() {
       } else if (data.status) {
         setStatus(data.status);
         setIp(data.ip);
+        setMinecraftOnline(data.minecraft_online || false);
         setErrorMsg(null);
       } else {
         setStatus("error");
@@ -73,18 +75,19 @@ export default function Home() {
 
   const isRunning = status === "running";
   const isPending = status === "pending" || status === "stopping";
+  const isFullyReady = isRunning && minecraftOnline;
 
   return (
     <div className={styles.page}>
-      <main className={`${styles.container} ${isRunning ? styles.online : ''}`}>
+      <main className={`${styles.container} ${isFullyReady ? styles.online : ''}`}>
       <h1 className={styles.title}>Minecraft Fabric</h1>
       <p className={styles.subtitle}>Server Controller Panel</p>
 
       <div className={styles.statusCard}>
         <div className={styles.statusLabel}>Server Status</div>
         <div className={styles.statusValue}>
-          <span className={`${styles.indicator} ${styles[status] || ''}`}></span>
-          {status.charAt(0).toUpperCase() + status.slice(1)}
+          <span className={`${styles.indicator} ${isFullyReady ? 'running' : styles[status] || ''}`}></span>
+          {isFullyReady ? "Minecraft Online" : isRunning ? "AWS Online (MC Booting)" : status.charAt(0).toUpperCase() + status.slice(1)}
         </div>
         
         {isRunning && ip && (
@@ -99,7 +102,8 @@ export default function Home() {
         {status === "error" && `Error: ${errorMsg || "An unknown error occurred. Please contact the server admin."}`}
         {status === "stopped" && "The server is currently offline to save resources. Click 'Start Server' below to boot it up!"}
         {status === "pending" && "The AWS machine is booting up! Please wait about 1 minute..."}
-        {status === "running" && "AWS is online! Minecraft is starting. You can usually join ~2 mins after the IP appears."}
+        {isRunning && !minecraftOnline && "AWS is online! Minecraft is currently starting up... You can usually join ~2 mins after the IP appears."}
+        {isFullyReady && "Minecraft is 100% ONLINE and ready to join! Copy the IP above."}
         {status === "stopping" && "The server is shutting down. Please wait."}
       </div>
 
@@ -108,7 +112,7 @@ export default function Home() {
         onClick={handleStart}
         disabled={loading || isRunning || isPending}
       >
-        {loading ? "Please wait..." : isRunning ? "Server Online" : isPending ? "Starting up..." : "Start Server"}
+        {loading ? "Please wait..." : isFullyReady ? "Server Online" : isRunning ? "Minecraft Booting..." : isPending ? "AWS Booting..." : "Start Server"}
       </button>
       </main>
 

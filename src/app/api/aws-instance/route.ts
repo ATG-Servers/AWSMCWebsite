@@ -1,5 +1,6 @@
 import { EC2Client, DescribeInstancesCommand, StartInstancesCommand } from "@aws-sdk/client-ec2";
 import { NextResponse } from "next/server";
+import util from "minecraft-server-util";
 
 export const dynamic = 'force-dynamic';
 
@@ -31,9 +32,24 @@ export async function GET() {
       return NextResponse.json({ error: "Instance not found" }, { status: 404 });
     }
 
+    let minecraftOnline = false;
+    
+    // Only attempt to ping if the instance is fully running and has an IP
+    if (instance.State?.Name === "running" && instance.PublicIpAddress) {
+      try {
+        // Fast 1 second timeout ping just to see if port 25565 is responding
+        await util.status(instance.PublicIpAddress, 25565, { timeout: 1000, enableSRV: false });
+        minecraftOnline = true;
+      } catch (err) {
+        // Ping failed, meaning the server is still booting or crashed
+        minecraftOnline = false;
+      }
+    }
+
     return NextResponse.json({
       status: instance.State?.Name,
       ip: instance.PublicIpAddress || null,
+      minecraft_online: minecraftOnline,
     });
   } catch (error: any) {
     console.error("Error describing instance:", error);
