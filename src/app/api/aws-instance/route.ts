@@ -1,6 +1,8 @@
 import { EC2Client, DescribeInstancesCommand, StartInstancesCommand } from "@aws-sdk/client-ec2";
 import { NextResponse } from "next/server";
 
+export const dynamic = 'force-dynamic';
+
 // Initialize the EC2 client. It will automatically use AWS_ACCESS_KEY_ID, 
 // AWS_SECRET_ACCESS_KEY, and AWS_REGION environment variables.
 const client = new EC2Client({
