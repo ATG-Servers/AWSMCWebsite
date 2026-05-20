@@ -11,6 +11,7 @@
   --success: #10b981;
   --success-glow: rgba(16, 185, 129, 0.4);
   --warning: #f59e0b;
+  --danger: #ef4444;
 }
 
 * {
