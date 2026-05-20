@@ -1,4 +1,4 @@
-import { EC2Client, DescribeInstancesCommand, StartInstancesCommand } from "@aws-sdk/client-ec2";
+import { EC2Client, DescribeInstancesCommand, StartInstancesCommand, StopInstancesCommand, RebootInstancesCommand } from "@aws-sdk/client-ec2";
 import { NextResponse } from "next/server";
 import util from "minecraft-server-util";
 
@@ -57,19 +57,47 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(req: Request) {
   if (!INSTANCE_ID) {
     return NextResponse.json({ error: "Instance ID not configured" }, { status: 500 });
   }
 
   try {
-    const command = new StartInstancesCommand({
-      InstanceIds: [INSTANCE_ID],
-    });
-    await client.send(command);
-    return NextResponse.json({ success: true, message: "Instance starting" });
+    const body = await req.json().catch(() => ({}));
+    const action = body.action || "start";
+    const pin = body.pin;
+
+    if (action === "stop" || action === "reboot") {
+      const ADMIN_PIN = process.env.ADMIN_PIN;
+      if (!ADMIN_PIN) {
+        return NextResponse.json({ error: "Server misconfigured: ADMIN_PIN not set" }, { status: 500 });
+      }
+      if (pin !== ADMIN_PIN) {
+        return NextResponse.json({ error: "Unauthorized. Invalid PIN." }, { status: 401 });
+      }
+    }
+
+    if (action === "stop") {
+      const command = new StopInstancesCommand({
+        InstanceIds: [INSTANCE_ID],
+      });
+      await client.send(command);
+      return NextResponse.json({ success: true, message: "Instance stopping" });
+    } else if (action === "reboot") {
+      const command = new RebootInstancesCommand({
+        InstanceIds: [INSTANCE_ID],
+      });
+      await client.send(command);
+      return NextResponse.json({ success: true, message: "Instance rebooting" });
+    } else {
+      const command = new StartInstancesCommand({
+        InstanceIds: [INSTANCE_ID],
+      });
+      await client.send(command);
+      return NextResponse.json({ success: true, message: "Instance starting" });
+    }
   } catch (error: any) {
-    console.error("Error starting instance:", error);
-    return NextResponse.json({ error: error.message || "Failed to start instance" }, { status: 500 });
+    console.error("Error modifying instance:", error);
+    return NextResponse.json({ error: error.message || "Failed to execute action" }, { status: 500 });
   }
 }
